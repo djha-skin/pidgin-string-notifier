@@ -72,19 +72,62 @@ static void cmdexe_conversation_updated(PurpleConversation *conv, PurpleConvUpda
 	}
 }
 
+
+static void execute_on_match(PurpleConversation *conv) {
+    purple_debug_info(PLUGIN_ID, "let's do this.\n");
+    const char *conversation_name = purple_conversation_get_name(conv);
+    const char *cmd = purple_prefs_get_string("/plugins/core/tymm-command-execute/command");
+    const char *conversations = purple_prefs_get_string("/plugins/core/tymm-command-execute/conversations");
+
+    if (cmd == NULL) {
+        purple_debug_info(PLUGIN_ID, "cmd is null.\n");
+        return;
+    }
+    if (conversations == NULL) {
+        purple_debug_info(PLUGIN_ID, "conversations is null.\n");
+        return;
+    }
+
+    char buffer[1024];
+
+    const char *token = conversations;
+    const char *until;
+    char *write;
+    while (*token != '\0') {
+        if (*token == ',') token++;
+        until = token;
+        while (*until != '\0' && *until != ',') until++;
+        purple_debug_info(PLUGIN_ID, "let's do this TWICE.\n");
+
+        for (write = buffer; token < until; write++) {
+            *write = *token;
+            token++;
+        }
+        *write = '\0';
+        purple_debug_info(PLUGIN_ID, "conversation checked: %s\n", buffer);
+        if (strcmp(buffer, conversation_name) == 0) {
+            purple_debug_info(PLUGIN_ID, "conversation matched: %s\n", buffer);
+            strcpy(buffer+strlen(cmd)+1, buffer);
+            buffer[strlen(cmd)] = ' ';
+            strcpy(buffer,cmd);
+            purple_debug_info(PLUGIN_ID, "executing: %s\n", buffer);
+            execute(buffer);
+            return;
+        }
+    }
+}
+
 static void cmdexe_received_im_msg(PurpleConversation *conv, PurpleConvUpdateType type) {
 	/* Check if the user wants to execute the command on _every_ received IM */
 	if(purple_prefs_get_bool("/plugins/core/tymm-command-execute/execute_always")) {
-		const char *cmd = purple_prefs_get_string("/plugins/core/tymm-command-execute/command");
-		execute(cmd);
+        execute_on_match(conv);
 	}
 }
 
-static void cmdexe_received_chat_msg() {
+static void cmdexe_received_chat_msg(PurpleConversation *conv, PurpleConvUpdateType type) {
 	/* Check if the user wants to execute the command _everytime_ the user receives a chat message */
 	if(purple_prefs_get_bool("/plugins/core/tymm-command-execute/execute_chat")) {
-		const char *cmd = purple_prefs_get_string("/plugins/core/tymm-command-execute/command");
-		execute(cmd);
+        execute_on_match(conv);
 	}
 }
 
@@ -123,6 +166,9 @@ static PurplePluginPrefFrame *plugin_config_frame(PurplePlugin *plugin) {
 	purple_plugin_pref_frame_add(frame, ppref);
 
 	ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/tymm-command-execute/command", "Command");
+	purple_plugin_pref_frame_add(frame, ppref);
+
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/tymm-command-execute/conversations", "Conversations");
 	purple_plugin_pref_frame_add(frame, ppref);
 
 	ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/tymm-command-execute/execute_always", "Execute command on every new IM (not only on updated conversations)");
@@ -176,6 +222,7 @@ static PurplePluginInfo info = {
 static void init_plugin(PurplePlugin *plugin) {
 	purple_prefs_add_none("/plugins/core/tymm-command-execute");
 	purple_prefs_add_string("/plugins/core/tymm-command-execute/command", "");
+	purple_prefs_add_string("/plugins/core/tymm-command-execute/conversations", "");
 	purple_prefs_add_bool("/plugins/core/tymm-command-execute/execute_always", FALSE);
 	purple_prefs_add_bool("/plugins/core/tymm-command-execute/execute_chat", FALSE);
 }

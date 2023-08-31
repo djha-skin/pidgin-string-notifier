@@ -45,6 +45,7 @@
 #include "prefs.h"
 
 #define PLUGIN_ID "core-skin-string-notifier"
+/* #define STRINGNOTIFIER_PLUGIN_VERSION "0.1.0" */
 
 #ifndef _PIDGIN_CONVERSATION_H_
 typedef enum
@@ -152,7 +153,7 @@ static void cmdexe_received_msg(PurpleAccount *account,
     const char *cmd = purple_prefs_get_string("/plugins/core/skin-string-notifier/command");
     const char *conversations = purple_prefs_get_string("/plugins/core/skin-string-notifier/conversations");
     const char *senders = purple_prefs_get_string("/plugins/core/skin-string-notifier/senders");
-    const char *substrings = purple_prefs_get_string("/plugins/core/skin-string-notifier/substrings");
+    const char *keywords = purple_prefs_get_string("/plugins/core/skin-string-notifier/keywords");
     
     if (cmd == NULL) {
         purple_debug_info(PLUGIN_ID, "cmd is null.\n");
@@ -164,7 +165,7 @@ static void cmdexe_received_msg(PurpleAccount *account,
     if (check_happened == SKIN_CHECK_BAD)
         check_happened = check_for(account, conv, "senders", sender, senders, cmd, sender);
     if (check_happened == SKIN_CHECK_BAD)
-        check_happened = check_for(account, conv, "message", message, substrings, cmd, sender);
+        check_happened = check_for(account, conv, "keywords", message, keywords, cmd, sender);
 }
 
 static gboolean plugin_load(PurplePlugin *plugin) {
@@ -192,7 +193,7 @@ static PurplePluginPrefFrame *plugin_config_frame(PurplePlugin *plugin) {
 
 	frame = purple_plugin_pref_frame_new();
 
-	ppref = purple_plugin_pref_new_with_label("Insert Command:");
+	ppref = purple_plugin_pref_new_with_label("String Notifier Settings:");
 	purple_plugin_pref_frame_add(frame, ppref);
 
 	ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/command", "Command");
@@ -202,7 +203,7 @@ static PurplePluginPrefFrame *plugin_config_frame(PurplePlugin *plugin) {
 	purple_plugin_pref_frame_add(frame, ppref);
     ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/senders", "Senders");
 	purple_plugin_pref_frame_add(frame, ppref);
-    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/substrings", "Substrings");
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/keywords", "Keywords");
 	purple_plugin_pref_frame_add(frame, ppref);
 
 
@@ -229,12 +230,12 @@ static PurplePluginInfo info = {
 	NULL,
 	PURPLE_PRIORITY_DEFAULT,
 	PLUGIN_ID,
-	"Command execute",
-	"1.0",
-	"Command execution for pidgin and finch",
-	"Takes a command which will be executed either on every new IM or on every conversation update. It can also act on new chat messages.",
-	"tymm <tymmm1@gmail.com>",
-	"https://github.com/tymm/command-execute/",
+	"String Notifier",
+	STRINGNOTIFIER_PLUGIN_VERSION,
+	"Notifier for pidgin and finch based on string search",
+	"Takes a command which will be executed either on every new IM or on every conversation message. Searches sender, conversation title, and keywords."
+	"skin <me@djha.skin>",
+	"https://git.sr.ht/~skin/string-notifier",
 	plugin_load,
 	plugin_unload,
 	NULL, // plugin_destroy
@@ -253,7 +254,7 @@ static void init_plugin(PurplePlugin *plugin) {
 	purple_prefs_add_string("/plugins/core/skin-string-notifier/command", "");
 	purple_prefs_add_string("/plugins/core/skin-string-notifier/conversations", "");
 	purple_prefs_add_string("/plugins/core/skin-string-notifier/senders", "");
-	purple_prefs_add_string("/plugins/core/skin-string-notifier/substrings", "");
+	purple_prefs_add_string("/plugins/core/skin-string-notifier/keywords", "");
 }
 
 PURPLE_INIT_PLUGIN(command-execute, init_plugin, info)

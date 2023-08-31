@@ -17,11 +17,11 @@ GIT_REVISION_ID = $(shell git -C .git rev-parse --short HEAD 2>/dev/null)
 REVISION_ID = $(shell hg id -i 2>/dev/null)
 REVISION_NUMBER = $(shell hg id -n 2>/dev/null)
 ifneq ($(REVISION_ID),)
-PLUGIN_VERSION ?= 0.9.$(shell date +%Y.%m.%d).git.r$(REVISION_NUMBER).$(REVISION_ID)
+PLUGIN_VERSION ?= 0.10.$(shell date +%Y.%m.%d).git.r$(REVISION_NUMBER).$(REVISION_ID)
 else ifneq ($(GIT_REVISION_ID),)
-PLUGIN_VERSION ?= 0.9.$(shell date +%Y.%m.%d).git.$(GIT_REVISION_ID)
+PLUGIN_VERSION ?= 0.10.$(shell date +%Y.%m.%d).git.$(GIT_REVISION_ID)
 else
-PLUGIN_VERSION ?= 0.9.$(shell date +%Y.%m.%d)
+PLUGIN_VERSION ?= 0.10.$(shell date +%Y.%m.%d)
 endif
 
 CFLAGS	?= -O2 -g -pipe -Wall

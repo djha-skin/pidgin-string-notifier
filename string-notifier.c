@@ -102,6 +102,11 @@ static int check_for(PurpleAccount *account, PurpleConversation *conv, const cha
         purple_debug_info(PLUGIN_ID, "check %s against %s\n", buffer, checked);
         if (strstr(checked, buffer) != NULL) {
             purple_debug_info(PLUGIN_ID, "matched: %s\n", buffer);
+            purple_debug_info(PLUGIN_ID, "presenting!\n");
+            purple_conversation_present(conv);
+            purple_debug_info(PLUGIN_ID, "emitting...\n");
+            purple_signal_emit(purple_conversations_get_handle(), "got-attention",
+                account, sender, conv, 0);
             strcpy(buffer+strlen(cmd)+strlen(check_name)+2, buffer);
             strcpy(buffer+strlen(cmd)+1, check_name);
             strcpy(buffer,cmd);
@@ -109,11 +114,6 @@ static int check_for(PurpleAccount *account, PurpleConversation *conv, const cha
             buffer[strlen(cmd)+1+strlen(check_name)] = ' ';
             purple_debug_info(PLUGIN_ID, "executing: %s\n", buffer);
             execute(buffer);
-            purple_debug_info(PLUGIN_ID, "emitting...\n");
-            purple_signal_emit(purple_plugins_get_handle(), "got-attention",
-                account, sender, conv, 0);
-            purple_debug_info(PLUGIN_ID, "presenting!\n");
-            purple_conversation_present(conv);
             return SKIN_CHECK_GOOD;
         }
     }

@@ -1,3 +1,10 @@
 /*.dll
 /*.so
 /*.so.*
+
+# Editor save files
+*~
+\#*
+.*#
+.#*
+.*.sw[a-z]

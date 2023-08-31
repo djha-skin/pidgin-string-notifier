@@ -127,7 +127,6 @@ static void cmdexe_received_msg(PurpleAccount *account,
  					const char *message,
 					PurpleConversation *conv,
 					PurpleMessageFlags flags) {
-	/* Check if the user wants to execute the command on _every_ received IM */
 
     if (conv == NULL) {
         purple_debug_info(PLUGIN_ID, "conversation is null.\n");
@@ -236,6 +235,7 @@ static PurplePluginInfo info = {
 	"Takes a command which will be executed either on every new IM or on every conversation message. Searches sender, conversation title, and keywords."
 	"skin <me@djha.skin>",
 	"https://git.sr.ht/~skin/string-notifier",
+	"This is so much better",
 	plugin_load,
 	plugin_unload,
 	NULL, // plugin_destroy

@@ -25,7 +25,7 @@ PLUGIN_VERSION ?= 0.10.$(shell date +%Y.%m.%d)
 endif
 
 CFLAGS	?= -O2 -g -pipe -Wall
-LDFLAGS ?= -Wl
+LDFLAGS ?= -Wl,-z,relro
 
 CFLAGS  += -std=c99 -DSTRINGNOTIFIER_PLUGIN_VERSION='"$(PLUGIN_VERSION)"'
 

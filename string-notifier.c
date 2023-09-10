@@ -71,20 +71,17 @@ void execute(const char *cmd) {
        }
 }
 
-#define SKIN_CHECK_GOOD 1
-#define SKIN_CHECK_BAD 0
 
-static int check_for(PurpleAccount *account, PurpleConversation *conv, const char *check_name, const char *checked, const char *against,
-    const char *cmd, const char *sender) {
 
+static gboolean check_for(PurpleAccount *account, PurpleConversation *conv, const char *check_name, const char *checked, const char *against,
+    const char *sender, char *buffer) {
     purple_debug_info(PLUGIN_ID, "begin check.\n");
 
     if (against == NULL || strlen(against) == 0)
     {
         purple_debug_info(PLUGIN_ID, "comma separated list is empty.\n");
-        return SKIN_CHECK_BAD;
+        return FALSE;
     }
-    char buffer[1024];
 
     const char *token = against;
     const char *until;
@@ -102,22 +99,41 @@ static int check_for(PurpleAccount *account, PurpleConversation *conv, const cha
         purple_debug_info(PLUGIN_ID, "check %s against %s\n", buffer, checked);
         if (strstr(checked, buffer) != NULL) {
             purple_debug_info(PLUGIN_ID, "matched: %s\n", buffer);
-            purple_debug_info(PLUGIN_ID, "presenting!\n");
-            purple_conversation_present(conv);
-            purple_debug_info(PLUGIN_ID, "emitting...\n");
-            purple_signal_emit(purple_conversations_get_handle(), "got-attention",
-                account, sender, conv, 0);
-            strcpy(buffer+strlen(cmd)+strlen(check_name)+2, buffer);
-            strcpy(buffer+strlen(cmd)+1, check_name);
-            strcpy(buffer,cmd);
-            buffer[strlen(cmd)] = ' ';
-            buffer[strlen(cmd)+1+strlen(check_name)] = ' ';
-            purple_debug_info(PLUGIN_ID, "executing: %s\n", buffer);
-            execute(buffer);
-            return SKIN_CHECK_GOOD;
+            return TRUE;
         }
     }
-    return SKIN_CHECK_BAD;
+    return FALSE;
+}
+
+
+static gboolean check_cmd(PurpleAccount *account, PurpleConversation *conv, const char *check_name, const char *checked, const char *against,
+    const char *sender, const char *cmd) {
+    char buffer[1024];
+    gboolean check_result = check_for(account, conv, check_name, checked, against, sender, buffer);
+    if (check_result) {
+        strcpy(buffer+strlen(cmd)+strlen(check_name)+2, buffer);
+        strcpy(buffer+strlen(cmd)+1, check_name);
+        strcpy(buffer,cmd);
+        buffer[strlen(cmd)] = ' ';
+        buffer[strlen(cmd)+1+strlen(check_name)] = ' ';
+        purple_debug_info(PLUGIN_ID, "executing: %s\n", buffer);
+        execute(buffer);
+    }
+    return check_result;
+}
+
+static gboolean check_buzz(PurpleAccount *account, PurpleConversation *conv, const char *check_name, const char *checked, const char *against,
+    const char *sender) {
+    char buffer[1024];
+    gboolean check_result = check_for(account, conv, check_name, checked, against, sender, buffer);
+    if (check_result) {
+        purple_debug_info(PLUGIN_ID, "presenting!\n");
+        purple_conversation_present(conv);
+        purple_debug_info(PLUGIN_ID, "emitting...\n");
+        purple_signal_emit(purple_conversations_get_handle(), "got-attention",
+            account, sender, conv, 0);
+    }
+    return check_result;
 }
 
 
@@ -149,22 +165,32 @@ static void cmdexe_received_msg(PurpleAccount *account,
 
 
     purple_debug_info(PLUGIN_ID, "let's do this.\n");
+    const char *buzz_conversations = purple_prefs_get_string("/plugins/core/skin-string-notifier/buzz-conversations");
+    const char *buzz_senders = purple_prefs_get_string("/plugins/core/skin-string-notifier/buzz-senders");
+    const char *buzz_keywords = purple_prefs_get_string("/plugins/core/skin-string-notifier/buzz-keywords");
     const char *cmd = purple_prefs_get_string("/plugins/core/skin-string-notifier/command");
-    const char *conversations = purple_prefs_get_string("/plugins/core/skin-string-notifier/conversations");
-    const char *senders = purple_prefs_get_string("/plugins/core/skin-string-notifier/senders");
-    const char *keywords = purple_prefs_get_string("/plugins/core/skin-string-notifier/keywords");
+    const char *cmd_conversations = purple_prefs_get_string("/plugins/core/skin-string-notifier/cmd-conversations");
+    const char *cmd_senders = purple_prefs_get_string("/plugins/core/skin-string-notifier/cmd-senders");
+    const char *cmd_keywords = purple_prefs_get_string("/plugins/core/skin-string-notifier/cmd-keywords");
 
     if (cmd == NULL) {
         purple_debug_info(PLUGIN_ID, "cmd is null.\n");
         return;
     }
+    /* Check buzz first, then cmd if buzz doesn't match */
 
-    int check_happened = check_for(account, conv, "conversations", conversation_title, conversations, cmd, sender);
+    gboolean check_matched = check_buzz(account, conv, "conversations", conversation_title, buzz_conversations, sender);
 
-    if (check_happened == SKIN_CHECK_BAD)
-        check_happened = check_for(account, conv, "senders", sender, senders, cmd, sender);
-    if (check_happened == SKIN_CHECK_BAD)
-        check_happened = check_for(account, conv, "keywords", message, keywords, cmd, sender);
+    if (!check_matched)
+        check_matched = check_buzz(account, conv, "senders", sender, buzz_senders, sender);
+    if (!check_matched)
+        check_matched = check_buzz(account, conv, "keywords", message, buzz_keywords, sender);
+    if (!check_matched)
+        check_matched = check_cmd(account, conv, "conversations", conversation_title, cmd_conversations, sender, cmd);
+    if (!check_matched)
+        check_matched = check_cmd(account, conv, "senders", sender, cmd_senders, sender, cmd);
+    if (!check_matched)
+        check_matched = check_cmd(account, conv, "keywords", message, cmd_keywords, sender, cmd);
 }
 
 static gboolean plugin_load(PurplePlugin *plugin) {
@@ -194,15 +220,21 @@ static PurplePluginPrefFrame *plugin_config_frame(PurplePlugin *plugin) {
 
     ppref = purple_plugin_pref_new_with_label("String Notifier Settings:");
     purple_plugin_pref_frame_add(frame, ppref);
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/buzz-conversations", "Buzz Conversations");
+    purple_plugin_pref_frame_add(frame, ppref);
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/buzz-senders", "Buzz Senders");
+    purple_plugin_pref_frame_add(frame, ppref);
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/buzz-keywords", "Buzz Keywords");
+    purple_plugin_pref_frame_add(frame, ppref);
 
     ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/command", "Command");
     purple_plugin_pref_frame_add(frame, ppref);
 
-    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/conversations", "Conversations");
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/cmd-conversations", "Command Conversations");
     purple_plugin_pref_frame_add(frame, ppref);
-    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/senders", "Senders");
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/cmd-senders", "Command Senders");
     purple_plugin_pref_frame_add(frame, ppref);
-    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/keywords", "Keywords");
+    ppref = purple_plugin_pref_new_with_name_and_label("/plugins/core/skin-string-notifier/cmd-keywords", "Command Keywords");
     purple_plugin_pref_frame_add(frame, ppref);
 
 
@@ -251,10 +283,13 @@ static PurplePluginInfo info = {
 
 static void init_plugin(PurplePlugin *plugin) {
     purple_prefs_add_none("/plugins/core/skin-string-notifier");
+    purple_prefs_add_string("/plugins/core/skin-string-notifier/buzz-conversations", "");
+    purple_prefs_add_string("/plugins/core/skin-string-notifier/buzz-senders", "");
+    purple_prefs_add_string("/plugins/core/skin-string-notifier/buzz-keywords", "");
     purple_prefs_add_string("/plugins/core/skin-string-notifier/command", "");
-    purple_prefs_add_string("/plugins/core/skin-string-notifier/conversations", "");
-    purple_prefs_add_string("/plugins/core/skin-string-notifier/senders", "");
-    purple_prefs_add_string("/plugins/core/skin-string-notifier/keywords", "");
+    purple_prefs_add_string("/plugins/core/skin-string-notifier/cmd-conversations", "");
+    purple_prefs_add_string("/plugins/core/skin-string-notifier/cmd-senders", "");
+    purple_prefs_add_string("/plugins/core/skin-string-notifier/cmd-keywords", "");
 }
 
 PURPLE_INIT_PLUGIN(command-execute, init_plugin, info)

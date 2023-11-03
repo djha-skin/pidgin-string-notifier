@@ -115,25 +115,34 @@ static gboolean check_cmd(PurpleAccount *account, PurpleConversation *conv, cons
     gboolean check_result = check_for(account, conv, check_name, checked, against, sender, check_buffer);
     if (check_result) {
         size_t cmd_len = strlen(cmd);
-        size_t check_name_len = strlen(check_name);
         size_t conversation_title_len = strlen(conversation_title);
         size_t sender_len = strlen(sender);
-        size_t matched_len = strlen(buffer);
-        size_t total_length = cmd_len +
-                conversation_title_len +
-                sender_len +
-                check_name_len +
-                matched_len + 5;
-        buffer[total_length] = '\0';
-        strcpy(buffer+cmd_len+conversation_title_len+sender_len+check_name_len+4, check_buffer);
-        strcpy(buffer+cmd_len+conversation_title_len+sender_len+3, check_name);
-        strcpy(buffer+cmd_len+conversation_title_len+2, sender);
-        strcpy(buffer+cmd_len+1, conversation_title);
-        strcpy(buffer, cmd);
-        buffer[cmd_len] = ' ';
-        buffer[cmd_len+conversation_title_len+1] = ' ';
-        buffer[cmd_len+conversation_title_len+sender_len+2] = ' ';
-        buffer[cmd_len+conversation_title_len+sender_len+check_name_len+3] = ' ';
+        size_t check_name_len = strlen(check_name);
+        size_t matched_len = strlen(check_buffer);
+        buffer[0] = '"';
+        strcpy(buffer+1, cmd);
+        buffer[1+cmd_len] = '"';
+        buffer[1+cmd_len+1] = ' ';
+        buffer[1+cmd_len+2] = '"';
+        strcpy(buffer+1+cmd_len+3, conversation_title);
+        buffer[1+cmd_len+3+conversation_title_len] = '"';
+        buffer[1+cmd_len+3+conversation_title_len+1] = ' ';
+        buffer[1+cmd_len+3+conversation_title_len+2] = '"';
+        strcpy(buffer+1+cmd_len+3+conversation_title_len+3, sender);
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len] = '"';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+1] = ' ';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+2] = '"';
+        strcpy(buffer+1+cmd_len+3+conversation_title_len+3+sender_len+3, check_name);
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len] = '"';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+1] = ' ';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+2] = '"';
+        strcpy(buffer+1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+3, check_name);
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len] = '"';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+1] = ' ';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+2] = '"';
+        strcpy(buffer+1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+3, check_buffer);
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+3+matched_len] = '"';
+        buffer[1+cmd_len+3+conversation_title_len+3+sender_len+3+check_name_len+3+matched_len+1] = '\0';
         purple_debug_info(PLUGIN_ID, "executing: %s\n", buffer);
         execute(buffer);
     }

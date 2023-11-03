@@ -107,15 +107,33 @@ static gboolean check_for(PurpleAccount *account, PurpleConversation *conv, cons
 
 
 static gboolean check_cmd(PurpleAccount *account, PurpleConversation *conv, const char *check_name, const char *checked, const char *against,
-    const char *sender, const char *cmd) {
+    const char *conversation_title,
+    const char *sender,
+    const char *cmd) {
     char buffer[1024];
-    gboolean check_result = check_for(account, conv, check_name, checked, against, sender, buffer);
+    char check_buffer[1024];
+    gboolean check_result = check_for(account, conv, check_name, checked, against, sender, check_buffer);
     if (check_result) {
-        strcpy(buffer+strlen(cmd)+strlen(check_name)+2, buffer);
-        strcpy(buffer+strlen(cmd)+1, check_name);
-        strcpy(buffer,cmd);
-        buffer[strlen(cmd)] = ' ';
-        buffer[strlen(cmd)+1+strlen(check_name)] = ' ';
+        size_t cmd_len = strlen(cmd);
+        size_t check_name_len = strlen(check_name);
+        size_t conversation_title_len = strlen(conversation_title);
+        size_t sender_len = strlen(sender);
+        size_t matched_len = strlen(buffer);
+        size_t total_length = cmd_len +
+                conversation_title_len +
+                sender_len +
+                check_name_len +
+                matched_len + 5;
+        buffer[total_length] = '\0';
+        strcpy(buffer+cmd_len+conversation_title_len+sender_len+check_name_len+4, check_buffer);
+        strcpy(buffer+cmd_len+conversation_title_len+sender_len+3, check_name);
+        strcpy(buffer+cmd_len+conversation_title_len+2, sender);
+        strcpy(buffer+cmd_len+1, conversation_title);
+        strcpy(buffer, cmd);
+        buffer[cmd_len] = ' ';
+        buffer[cmd_len+conversation_title_len+1] = ' ';
+        buffer[cmd_len+conversation_title_len+sender_len+2] = ' ';
+        buffer[cmd_len+conversation_title_len+sender_len+check_name_len+3] = ' ';
         purple_debug_info(PLUGIN_ID, "executing: %s\n", buffer);
         execute(buffer);
     }
@@ -186,11 +204,11 @@ static void cmdexe_received_msg(PurpleAccount *account,
     if (!check_matched)
         check_matched = check_buzz(account, conv, "keywords", message, buzz_keywords, sender);
     if (!check_matched)
-        check_matched = check_cmd(account, conv, "conversations", conversation_title, cmd_conversations, sender, cmd);
+        check_matched = check_cmd(account, conv, "conversations", conversation_title, cmd_conversations, sender, conversation_title, cmd);
     if (!check_matched)
-        check_matched = check_cmd(account, conv, "senders", sender, cmd_senders, sender, cmd);
+        check_matched = check_cmd(account, conv, "senders", sender, cmd_senders, sender, conversation_title, cmd);
     if (!check_matched)
-        check_matched = check_cmd(account, conv, "keywords", message, cmd_keywords, sender, cmd);
+        check_matched = check_cmd(account, conv, "keywords", message, cmd_keywords, sender, conversation_title, cmd);
 }
 
 static gboolean plugin_load(PurplePlugin *plugin) {
